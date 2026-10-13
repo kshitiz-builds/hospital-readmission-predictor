@@ -1,1 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RiskLens · Chronic Disease Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07090f; --panel: #0d1118; --line: rgba(255,255,255,0.07);
+    --text: #e6edf6; --muted: #7d8aa0; --accent: #7c9cff; --accent2: #5eead4;
+    --low: #34d399; --mid: #fbbf24; --high: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px; mask-image: radial-gradient(ellipse at top, #000 30%, transparent 75%);
+  }
+  .orb { position: fixed; width: 520px; height: 520px; border-radius: 50%; filter: blur(120px); opacity: 0.22; pointer-events: none; z-index: 0; }
+  .orb.a { background: var(--accent); top: -200px; left: -150px; }
+  .orb.b { background: var(--accent2); bottom: -220px; right: -150px; }
 
+  .app { position: relative; z-index: 1; display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  aside {
+    border-right: 1px solid var(--line); padding: 28px 20px; background: rgba(13,17,24,0.7); backdrop-filter: blur(10px);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; margin-bottom: 28px; }
+  .logo { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: grid; place-items: center; color: #07090f; font-weight: 800; font-size: 14px; }
+  .search {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: rgba(255,255,255,0.03); color: var(--text); font: inherit; font-size: 14px; outline: none; margin-bottom: 16px;
+  }
+  .search:focus { border-color: var(--accent); }
+  .label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 18px 6px 8px; }
+  .item {
+    width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 12px; margin-bottom: 4px;
+    border: 1px solid transparent; border-radius: 10px; background: none; color: var(--muted);
+    font: inherit; font-size: 14px; cursor: pointer; text-align: left; transition: all 0.2s;
+  }
+  .item:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .item.active { color: var(--text); background: rgba(124,156,255,0.1); border-color: rgba(124,156,255,0.3); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+  main { padding: 44px 48px; max-width: 1040px; width: 100%; }
+  .hero h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+  .hero p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .stat b { font-size: 22px; display: block; }
+  .stat span { color: var(--muted); font-size: 12px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 30px; animation: rise 0.45s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .view { display: none; } .view.active { display: block; }
+  .crumb { color: var(--muted); font-size: 13px; cursor: pointer; margin-bottom: 14px; display: inline-block; }
+  .crumb:hover { color: var(--accent); }
+  .title { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 26px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px;
+    color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: all 0.25s;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
+    background: radial-gradient(circle at top right, rgba(124,156,255,0.18), transparent 60%);
+  }
+  .card:hover { transform: translateY(-3px); border-color: rgba(124,156,255,0.4); }
+  .card:hover::before { opacity: 1; }
+  .card .ico { font-size: 22px; }
+  .card h3 { font-size: 16px; margin: 12px 0 4px; font-weight: 600; }
+  .card p { font-size: 12.5px; color: var(--muted); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px 18px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.2px; }
+  .field input, .field select {
+    width: 100%; padding: 11px 12px; border-radius: 10px; font: inherit; font-size: 14px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--line); color: var(--text); outline: none; transition: all 0.2s;
+  }
+  .field select option { background: #0d1118; }
+  .field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(124,156,255,0.15); }
+
+  .actions { margin-top: 26px; display: flex; gap: 12px; align-items: center; }
+  .btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #06080d; border: none; cursor: pointer;
+    font: inherit; font-weight: 600; font-size: 14px; padding: 12px 24px; border-radius: 11px; transition: all 0.2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(124,156,255,0.3); }
+  .btn:disabled { opacity: 0.5; cursor: wait; transform: none; box-shadow: none; }
+
+  .result { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; margin-top: 30px; padding: 24px; border-radius: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--line); animation: rise 0.5s ease; }
+  .gauge { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+  .gauge svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+  .gauge .track { stroke: rgba(255,255,255,0.07); }
+  .gauge .arc { transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1); }
+  .gauge .num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 30px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; }
+  .b-low { background: rgba(52,211,153,0.12); color: var(--low); }
+  .b-mid { background: rgba(251,191,36,0.12); color: var(--mid); }
+  .b-high { background: rgba(248,113,113,0.14); color: var(--high); }
+  .result h4 { font-size: 18px; margin: 12px 0 6px; }
+  .result p { color: var(--muted); font-size: 14px; max-width: 440px; line-height: 1.6; }
+
+  .skeleton { height: 14px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.09), rgba(255,255,255,0.04)); background-size: 200% 100%; animation: shimmer 1.4s infinite; margin-bottom: 12px; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .err { margin-top: 18px; padding: 12px 16px; border-radius: 10px; font-size: 14px; color: #fecaca; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); }
+  hr.sep { border: none; border-top: 1px solid var(--line); margin: 34px 0; }
+
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 28px 20px; }
+    .stats { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="orb a"></div>
+<div class="orb b"></div>
+
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo">R</div>RiskLens</div>
+    <input class="search" id="search" placeholder="Search disease...">
+    <div class="label">Diseases</div>
+    <div id="nav"></div>
+  </aside>
+
+  <main>
+    <section id="home" class="view active">
+      <div class="hero">
+        <h1>Chronic disease risk, explained.</h1>
+        <p>Machine learning models trained on public UCI and Kaggle datasets. Pick a condition to begin.</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="statCount">-</b><span>Diseases covered</span></div>
+        <div class="stat"><b>RandomForest</b><span>Core model</span></div>
+        <div class="stat"><b>30-day</b><span>Readmission (diabetes)</span></div>
+      </div>
+      <div id="cards" class="cards"></div>
+    </section>
+
+    <section id="detail" class="view">
+      <span class="crumb" id="backBtn">&larr; All diseases</span>
+      <div class="panel">
+        <div class="title" id="title"></div>
+        <div class="sub" id="sub">Enter patient values and run the prediction.</div>
+        <div id="diseaseForm"></div>
+        <div id="diseaseResult"></div>
+        <div id="readmitBlock" style="display:none">
+          <hr class="sep">
+          <div class="title">30-day readmission</div>
+          <div class="sub">Based only on diabetes hospital data.</div>
+          <div id="readmitForm"></div>
+          <div id="readmitResult"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const ICONS = { Heart: '♥', Kidney: '◉', Liver: '◆', 'Cervical Cancer': '✚', Parkinson: '≈', Hepatitis: '✦', Diabetes: '●' };
+let ALL = [];
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    let msg = await r.text();
+    try { msg = JSON.parse(msg).detail || msg; } catch (_) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setActiveNav(name) {
+  document.querySelectorAll('.item').forEach(b => b.classList.toggle('active', b.dataset.n === name));
+}
+
+function renderNav(names, filter = '') {
+  const q = filter.toLowerCase();
+  const list = names.filter(n => n.toLowerCase().includes(q));
+  $('#nav').innerHTML = list.map(n =>
+    `<button class="item" data-n="${n}"><span class="dot"></span>${n}</button>`).join('');
+  document.querySelectorAll('.item').forEach(b => b.onclick = () => openDisease(b.dataset.n));
+}
+
+function renderCards(names) {
+  $('#cards').innerHTML = names.map(n =>
+    `<button class="card" data-n="${n}">
+       <div class="ico">${ICONS[n] || '•'}</div>
+       <h3>${n}</h3>
+       <p>Check risk score</p>
+     </button>`).join('');
+  document.querySelectorAll('.card').forEach(b => b.onclick = () => openDisease(b.dataset.n));
+}
+
+function renderResult(el, pct) {
+  let cls, lbl, msg;
+  if (pct < 30) { cls = 'low'; lbl = 'LOW RISK'; msg = 'Risk kam hai. Routine care kaafi hai.'; }
+  else if (pct <= 75) { cls = 'mid'; lbl = 'MODERATE RISK'; msg = 'Risk moderate hai. Follow-up recommend hai.'; }
+  else { cls = 'high'; lbl = 'HIGH RISK'; msg = 'Risk high hai. Patient ko regular check-ups ke liye aana chahiye.'; }
+  const color = { low: '#34d399', mid: '#fbbf24', high: '#f87171' }[cls];
+  const R = 62, C = 2 * Math.PI * R, off = C * (1 - Math.min(pct, 100) / 100);
+  el.innerHTML = `
+    <div class="result">
+      <div class="gauge">
+        <svg viewBox="0 0 150 150">
+          <circle class="track" cx="75" cy="75" r="${R}" fill="none" stroke-width="12"/>
+          <circle class="arc" cx="75" cy="75" r="${R}" fill="none" stroke="${color}" stroke-width="12"
+                  stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" id="arc"/>
+        </svg>
+        <div class="num" id="num">0%</div>
+      </div>
+      <div>
+        <span class="badge b-${cls}">${lbl}</span>
+        <h4>Predicted risk: ${pct}%</h4>
+        <p>${msg}</p>
+      </div>
+    </div>`;
+  requestAnimationFrame(() => {
+    document.getElementById('arc').setAttribute('stroke-dashoffset', off);
+  });
+  let cur = 0;
+  const step = () => {
+    cur += Math.max(1, pct / 40);
+    if (cur >= pct) cur = pct;
+    document.getElementById('num').textContent = Math.round(cur) + '%';
+    if (cur < pct) requestAnimationFrame(step);
+  };
+  step(); requestAnimationFrame(step);
+}
+
+function skeleton(el) {
+  el.innerHTML = '<div class="skeleton" style="width:60%"></div><div class="skeleton" style="width:85%"></div><div class="skeleton" style="width:40%"></div>';
+}
+
+async function buildForm(key, formEl, resultEl, btnText) {
+  resultEl.innerHTML = '';
+  skeleton(formEl);
+  try {
+    const fields = await api(`/api/fields/${encodeURIComponent(key)}`);
+    const inputs = fields.map(f => {
+      if (f.type === 'select') {
+        const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
+        return `<div class="field"><label>${f.label}</label><select name="${f.name}">${opts}</select></div>`;
+      }
+      const val = f.default ?? '';
+      return `<div class="field"><label>${f.label}</label><input type="number" step="any" name="${f.name}" value="${val}"></div>`;
+    }).join('');
+    formEl.innerHTML = `<form><div class="grid2">${inputs}</div><div class="actions"><button class="btn" type="submit">${btnText}</button></div></form>`;
+
+    formEl.querySelector('form').onsubmit = async e => {
+      e.preventDefault();
+      const submit = e.target.querySelector('button');
+      const body = {};
+      new FormData(e.target).forEach((v, k) => { body[k] = v === '' ? null : (isNaN(v) ? v : Number(v)); });
+      submit.disabled = true; submit.textContent = 'Calculating...';
+      skeleton(resultEl);
+      try {
+        const res = await api(`/api/predict/${encodeURIComponent(key)}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        renderResult(resultEl, res.probability);
+      } catch (err) {
+        resultEl.innerHTML = `<div class="err">${err.message}</div>`;
+      } finally {
+        submit.disabled = false; submit.textContent = btnText;
+      }
+    };
+  } catch (err) {
+    formEl.innerHTML = `<div class="err">Could not load form: ${err.message}</div>`;
+  }
+}
+
+async function openDisease(name) {
+  $('#title').textContent = `${ICONS[name] || ''}  ${name}`;
+  $('#sub').textContent = 'Enter patient values and run the prediction.';
+  $('#readmitBlock').style.display = name === 'Diabetes' ? 'block' : 'none';
+  setActiveNav(name);
+  showView('detail');
+  await buildForm(name, $('#diseaseForm'), $('#diseaseResult'), 'Check risk');
+  if (name === 'Diabetes') await buildForm('readmit', $('#readmitForm'), $('#readmitResult'), 'Check readmission');
+}
+
+function goHome() {
+  setActiveNav('');
+  showView('home');
+}
+
+async function init() {
+  ALL = await api('/api/diseases');
+  $('#statCount').textContent = ALL.length;
+  renderNav(ALL);
+  renderCards(ALL);
+  $('#search').oninput = e => { renderNav(ALL, e.target.value); };
+}
+
+$('#backBtn').onclick = goHome;
+init();
+</script>
+</body>
+</html>
